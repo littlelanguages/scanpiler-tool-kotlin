@@ -29,41 +29,43 @@ export function denoCommand(
   fileName: string,
   options: CommandOptions,
 ): Promise<void> {
-  // const parsedFileName = Path.parse(fileName);
+  const [packageName, name] = splitName(options.name);
+  const directory = `${options.directory}/${packageName.replaceAll(".", "/")}`;
+  const scannerOutfileFileName = `${directory}/${name}.kt`;
 
-  // const scannerOutputFileName = options.scannerOutputFileName ||
-  //   constructOutputFileName(parsedFileName, "scanner");
+  if (
+    options.force ||
+    fileDateTime(fileName) > fileDateTime(scannerOutfileFileName)
+  ) {
+    const decoder = new TextDecoder("utf-8");
+    const src = decoder.decode(Deno.readFileSync(fileName));
+    const parseResult = translate(src);
 
-  // if (
-  //   options.force ||
-  //   fs.sourceFileDateTime() > fs.targetFileDateTime(["scanner", ".ts"])
-  // ) {
-  //   const decoder = new TextDecoder("utf-8");
-  //   const src = decoder.decode(Deno.readFileSync(fs.sourceFileName()));
-  //   const parseResult = translate(src);
-
-  //   return parseResult.either((es) =>
-  //     PP.render(
-  //       PP.vcat(
-  //         es.map((e) => PP.hcat(["Error: ", asDoc(e)])).concat(PP.blank),
-  //       ),
-  //       Deno.stdout,
-  //     ), (definition) => {
-  //     if (options.verbose) {
-  //       console.log(`Writing scanner.ts`);
-  //     }
-  //     return writeScanner(fs.targetFileName(["scanner", ".ts"]), definition);
-  //   });
-  // } else {
-  return Promise.resolve();
-  // }
+    return parseResult.either((es) =>
+      PP.render(
+        PP.vcat(
+          es.map((e) => PP.hcat(["Error: ", asDoc(e)])).concat(PP.blank),
+        ),
+        Deno.stdout,
+      ), (definition) => {
+      if (options.verbose) {
+        console.log(`Writing scanner.ts`);
+      }
+      return Deno.mkdir(directory, { recursive: true }).then((_) =>
+        writeScanner(scannerOutfileFileName, packageName, definition)
+      );
+    });
+  } else {
+    return Promise.resolve();
+  }
 }
 
 export function writeScanner(
   fileName: string,
+  packageName: string,
   definition: Definition,
 ): Promise<void> {
-  const scannerDoc = PP.vcat([
+  const oldScannerDoc = PP.vcat([
     'import * as AbstractScanner from "https://raw.githubusercontent.com/littlelanguages/scanpiler-deno-lib/0.1.0/abstract-scanner.ts";',
     PP.blank,
     "export type Token = AbstractScanner.Token<TToken>;",
@@ -110,6 +112,10 @@ export function writeScanner(
         .map((t) => `${t},`),
     ),
     "}",
+  ]);
+
+  const scannerDoc = PP.vcat([
+    PP.hcat(["package ", packageName]),
   ]);
 
   return Deno
@@ -327,18 +333,19 @@ function writeInSet(selector: string, s: Set<number>): string {
     ).join(" || ");
 }
 
-const constructOutputFileName = (
-  parsedFileName: Path.ParsedPath,
-  name: string,
-): string =>
-  Path.format(
-    Object.assign(
-      {},
-      parsedFileName,
-      {
-        base: `${parsedFileName.name}-${name}.ts`,
-        name: `${parsedFileName.name}-${name}`,
-        ext: ".ts",
-      },
-    ),
-  );
+const splitName = (name: string): [string, string] => {
+  const lastIndexOfPeriod = name.lastIndexOf(".");
+
+  return (lastIndexOfPeriod === -1) ? ["", name] : [
+    name.substr(0, lastIndexOfPeriod),
+    name.substr(lastIndexOfPeriod + 1),
+  ];
+};
+
+const fileDateTime = (name: string): number => {
+  try {
+    return Deno.lstatSync(name)?.mtime?.getTime() || 0;
+  } catch (_) {
+    return 0;
+  }
+};

@@ -2,3 +2,6 @@
 .idea
 
 build
+
+# Generated assets
+src/main/kotlin/simple/Scanner.kt
