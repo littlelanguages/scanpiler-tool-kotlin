@@ -15,8 +15,12 @@ import {
 import * as PP from "https://raw.githubusercontent.com/littlelanguages/deno-lib-text-prettyprint/0.3.1/mod.ts";
 import * as Set from "https://raw.githubusercontent.com/littlelanguages/deno-lib-data-set/0.1.0/mod.ts";
 
+/*
+  scanpiler --directory=. --name=za.co.no.fred.Scanner hello.llld
+*/
 export type CommandOptions = {
   directory: string | undefined;
+  name: string;
   force: boolean;
   verbose: boolean;
 };
@@ -25,31 +29,34 @@ export function denoCommand(
   fileName: string,
   options: CommandOptions,
 ): Promise<void> {
-  const fs = new FS(fileName, options);
+  // const parsedFileName = Path.parse(fileName);
 
-  if (
-    options.force ||
-    fs.sourceFileDateTime() > fs.targetFileDateTime(["scanner", ".ts"])
-  ) {
-    const decoder = new TextDecoder("utf-8");
-    const src = decoder.decode(Deno.readFileSync(fs.sourceFileName()));
-    const parseResult = translate(src);
+  // const scannerOutputFileName = options.scannerOutputFileName ||
+  //   constructOutputFileName(parsedFileName, "scanner");
 
-    return parseResult.either((es) =>
-      PP.render(
-        PP.vcat(
-          es.map((e) => PP.hcat(["Error: ", asDoc(e)])).concat(PP.blank),
-        ),
-        Deno.stdout,
-      ), (definition) => {
-      if (options.verbose) {
-        console.log(`Writing scanner.ts`);
-      }
-      return writeScanner(fs.targetFileName(["scanner", ".ts"]), definition);
-    });
-  } else {
-    return Promise.resolve();
-  }
+  // if (
+  //   options.force ||
+  //   fs.sourceFileDateTime() > fs.targetFileDateTime(["scanner", ".ts"])
+  // ) {
+  //   const decoder = new TextDecoder("utf-8");
+  //   const src = decoder.decode(Deno.readFileSync(fs.sourceFileName()));
+  //   const parseResult = translate(src);
+
+  //   return parseResult.either((es) =>
+  //     PP.render(
+  //       PP.vcat(
+  //         es.map((e) => PP.hcat(["Error: ", asDoc(e)])).concat(PP.blank),
+  //       ),
+  //       Deno.stdout,
+  //     ), (definition) => {
+  //     if (options.verbose) {
+  //       console.log(`Writing scanner.ts`);
+  //     }
+  //     return writeScanner(fs.targetFileName(["scanner", ".ts"]), definition);
+  //   });
+  // } else {
+  return Promise.resolve();
+  // }
 }
 
 export function writeScanner(
@@ -320,48 +327,18 @@ function writeInSet(selector: string, s: Set<number>): string {
     ).join(" || ");
 }
 
-class FS {
-  sourceFile: Path.ParsedPath;
-  sourceFileStat: Deno.FileInfo | undefined;
-  options: CommandOptions;
-
-  constructor(srcFileName: string, options: CommandOptions) {
-    this.sourceFile = Path.parse(srcFileName);
-    if (this.sourceFile.ext == undefined) {
-      this.sourceFile.ext = ".ll";
-    }
-    this.options = options;
-  }
-
-  sourceFileName(): string {
-    return Path.format(this.sourceFile);
-  }
-
-  sourceFileDateTime(): number {
-    if (this.sourceFileStat == undefined) {
-      this.sourceFileStat = Deno.lstatSync(this.sourceFileName());
-    }
-
-    return this.sourceFileStat?.mtime?.getTime() || 0;
-  }
-
-  targetFileDateTime(name: [string, string]): number {
-    try {
-      return Deno.lstatSync(this.targetFileName(name))?.mtime?.getTime() || 0;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  targetFileName(name: [string, string]): string {
-    const path = Object.assign({}, this.sourceFile);
-
-    path.name = name[0];
-    path.ext = name[1];
-
-    path.dir = this.options.directory || path.dir;
-    path.base = path.name + path.ext;
-
-    return Path.format(path);
-  }
-}
+const constructOutputFileName = (
+  parsedFileName: Path.ParsedPath,
+  name: string,
+): string =>
+  Path.format(
+    Object.assign(
+      {},
+      parsedFileName,
+      {
+        base: `${parsedFileName.name}-${name}.ts`,
+        name: `${parsedFileName.name}-${name}`,
+        ext: ".ts",
+      },
+    ),
+  );

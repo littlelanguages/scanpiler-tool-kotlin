@@ -9,7 +9,4 @@ then
     exit -1
 fi
 
-(
-    cd ./test
-    ./gradlew test
-)
+deno test --allow-run --allow-write --allow-read mod_test.ts
