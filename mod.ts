@@ -116,6 +116,16 @@ export function writeScanner(
 
   const scannerDoc = PP.vcat([
     PP.hcat(["package ", packageName]),
+    PP.blank,
+    "import java.io.Reader",
+    "import scanner.Location",
+    "import scanner.LocationCoordinate",
+    "import scanner.LocationRange",
+
+    PP.blank,
+    emitTToken(definition),
+    PP.blank,
+    emitToken(),
   ]);
 
   return Deno
@@ -314,6 +324,40 @@ function emitNonNestedCommentEndState(
     ];
   }
 }
+
+const emitTToken = (definition: Definition): PP.Doc =>
+  PP.vcat([
+    "enum class TToken {",
+    nestvcat(
+      definition.tokens
+        .map((t) => t[0]).concat(["TEOS", "TERROR"])
+        .map((t) => `T${t},`),
+    ),
+    "}",
+  ]);
+
+const emitToken = (): PP.Doc =>
+  PP.vcat([
+    "data class Token(val tToken: TToken, val location: Location, val lexeme: String) {",
+    nestvcat([
+      "override fun toString(): String {",
+      nestvcat([
+        "fun pp(location: Location): String =",
+        nestvcat([
+          "when (location) {",
+          nestvcat([
+            'is LocationCoordinate -> "${location.offset}:${location.line}:${location.column}"',
+            'is LocationRange -> pp(location.start) + "-" + pp(location.end)',
+          ]),
+          "}",
+        ]),
+        "",
+        'return tToken.toString().drop(1) + " " + pp(location) + " [" + lexeme + "]"',
+      ]),
+      "}",
+    ]),
+    "}",
+  ]);
 
 function nest(doc: PP.Doc | string): PP.Doc {
   return PP.nest(2, doc);
