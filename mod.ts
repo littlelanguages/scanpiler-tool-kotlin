@@ -1,4 +1,3 @@
-import * as Path from "https://deno.land/std@0.71.0/path/mod.ts";
 import {
   asDoc,
   BlockComment,
@@ -65,26 +64,43 @@ export function writeScanner(
   packageName: string,
   definition: Definition,
 ): Promise<void> {
-  const oldScannerDoc = PP.vcat([
-    'import * as AbstractScanner from "https://raw.githubusercontent.com/littlelanguages/scanpiler-deno-lib/0.1.0/abstract-scanner.ts";',
+  const scannerDoc = PP.vcat([
+    PP.hcat(["package ", packageName]),
     PP.blank,
-    "export type Token = AbstractScanner.Token<TToken>;",
+    "import java.io.Reader",
+    "import scanner.AbstractScanner",
+    "import scanner.AbstractToken",
+    "import scanner.Location",
     PP.blank,
-    "export class Scanner extends AbstractScanner.Scanner<TToken> {",
+    emitScanner(definition),
+    PP.blank,
+    emitTToken(definition),
+    PP.blank,
+    emitToken(),
+  ]);
+
+  return Deno
+    .create(fileName)
+    .then((w) => PP.render(scannerDoc, w).then((_) => w.close()))
+    .then((_) => {});
+}
+
+const emitScanner = (definition: Definition): PP.Doc =>
+  PP.vcat([
+    "class Scanner(input: Reader): AbstractScanner<TToken>(input, TToken.TERROR) {",
     nestvcat([
-      "constructor(input: string) {",
-      nestvcat(["super(input, TToken.ERROR);"]),
-      "}",
+      "override fun newToken(ttoken: TToken, location: Location, lexeme: String): AbstractToken<TToken> =",
+      nestvcat(["Token(ttoken, location, lexeme)"]),
       PP.blank,
-      "next() {",
+      "override fun next() {",
       nestvcat([
-        "if (this.currentToken[0] != TToken.EOS) {",
+        "if (currentToken.tToken != TToken.TEOS) {",
         nestvcat([
-          `while (${writeInSet("this.nextCh", definition.whitespace)}) {`,
-          nest("this.nextChar();"),
+          `while (${writeInSet("nextCh", definition.whitespace)}) {`,
+          nest("nextChar();"),
           "}",
           PP.blank,
-          "let state = 0;",
+          "var state = 0",
           emitStateTransitionLoop(
             definition,
             {
@@ -100,39 +116,7 @@ export function writeScanner(
       "}",
     ]),
     "}",
-    PP.blank,
-    "export function mkScanner(input: string): Scanner {",
-    nest("return new Scanner(input);"),
-    "}",
-    PP.blank,
-    "export enum TToken {",
-    nestvcat(
-      definition.tokens
-        .map((t) => t[0]).concat(["EOS", "ERROR"])
-        .map((t) => `${t},`),
-    ),
-    "}",
   ]);
-
-  const scannerDoc = PP.vcat([
-    PP.hcat(["package ", packageName]),
-    PP.blank,
-    "import java.io.Reader",
-    "import scanner.Location",
-    "import scanner.LocationCoordinate",
-    "import scanner.LocationRange",
-
-    PP.blank,
-    emitTToken(definition),
-    PP.blank,
-    emitToken(),
-  ]);
-
-  return Deno
-    .create(fileName)
-    .then((w) => PP.render(scannerDoc, w).then((_) => w.close()))
-    .then((_) => {});
-}
 
 type EmitOnEndState = {
   markForState0: boolean;
@@ -152,7 +136,7 @@ function emitStateTransitionLoop(
   return PP.vcat([
     "while (true) {",
     nestvcat([
-      `switch (${options.stateVariable}) {`,
+      `when (${options.stateVariable}) {`,
       nestvcat(emitStates(definition, options)),
       "}",
     ]),
@@ -168,7 +152,7 @@ function emitStates(
 
   return dfa.nodes.flatMap((node) =>
     PP.vcat([
-      `case ${node.id}: {`,
+      `${node.id} -> {`,
       nestvcat(
         node.transitions.length == 0
           ? options.emitEnd(definition, dfa, node)
@@ -187,7 +171,7 @@ function emitStates(
                     ? "this.markAndNextChar();"
                     : "this.nextChar();",
                   `${options.stateVariable} = ${transition[1].id};`,
-                  "break;",
+                  // "break;",
                 ]),
               ]),
             ),
@@ -217,8 +201,8 @@ function emitTopLevelEndState(
     } else if (comment instanceof BlockComment) {
       if (comment.nested) {
         return [
-          "let nstate = 0;",
-          "let nesting = 1;",
+          "var nstate = 0",
+          "var nesting = 1",
           emitStateTransitionLoop(definition, {
             markForState0: false,
             dfa: dfaForNestedBlockComment(comment.open, comment.close),
@@ -228,7 +212,7 @@ function emitTopLevelEndState(
         ];
       } else {
         return [
-          "let nstate = 0;",
+          "var nstate = 0",
           emitStateTransitionLoop(definition, {
             markForState0: false,
             dfa: dfaForNonNestedBlockComment(comment.close),
@@ -242,19 +226,17 @@ function emitTopLevelEndState(
     }
   } else if (finalToken != undefined) {
     return [
-      `this.setToken(${finalToken});`,
+      `this.setToken(TToken.${tokenName(definition, finalToken)})`,
       "return;",
     ];
   } else if (node.id == 0) {
     return [
-      "this.markAndNextChar();",
-      "this.attemptBacktrackOtherwise(TToken.ERROR);",
-      "return;",
+      "this.markAndNextChar()",
+      "this.attemptBacktrackOtherwise(TToken.TERROR)",
     ];
   } else {
     return [
-      "this.attemptBacktrackOtherwise(TToken.ERROR);",
-      "return;",
+      "this.attemptBacktrackOtherwise(TToken.TERROR)",
     ];
   }
 }
@@ -268,32 +250,29 @@ function emitNestedCommentEndState(
 
   if (finalToken == undefined) {
     return [
-      "this.attemptBacktrackOtherwise(TToken.ERROR);",
-      "return;",
+      "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "return",
     ];
   } else if (finalToken == 0) {
     return [
-      "nstate = 0;",
-      "break;",
+      "nstate = 0",
     ];
   } else if (finalToken == 1) {
     return [
-      "nesting += 1;",
-      "nstate = 0;",
-      "break;",
+      "nesting += 1",
+      "nstate = 0",
     ];
   } else {
     return [
-      "nesting -= 1;",
+      "nesting -= 1",
       "if (nesting == 0) {",
       nestvcat([
-        "this.next();",
+        "this.next()",
         "return;",
       ]),
       "} else {",
       nestvcat([
-        "nstate = 0;",
-        "break;",
+        "nstate = 0",
       ]),
       "}",
     ];
@@ -309,18 +288,17 @@ function emitNonNestedCommentEndState(
 
   if (finalToken == undefined) {
     return [
-      "this.attemptBacktrackOtherwise(TToken.ERROR);",
-      "return;",
+      "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "return",
     ];
   } else if (finalToken == 0) {
     return [
-      "nstate = 0;",
-      "break;",
+      "nstate = 0",
     ];
   } else {
     return [
-      "this.next();",
-      "return;",
+      "this.next()",
+      "return",
     ];
   }
 }
@@ -330,7 +308,7 @@ const emitTToken = (definition: Definition): PP.Doc =>
     "enum class TToken {",
     nestvcat(
       definition.tokens
-        .map((t) => t[0]).concat(["TEOS", "TERROR"])
+        .map((t) => t[0]).concat(["EOS", "ERROR"])
         .map((t) => `T${t},`),
     ),
     "}",
@@ -338,26 +316,20 @@ const emitTToken = (definition: Definition): PP.Doc =>
 
 const emitToken = (): PP.Doc =>
   PP.vcat([
-    "data class Token(val tToken: TToken, val location: Location, val lexeme: String) {",
-    nestvcat([
-      "override fun toString(): String {",
-      nestvcat([
-        "fun pp(location: Location): String =",
-        nestvcat([
-          "when (location) {",
-          nestvcat([
-            'is LocationCoordinate -> "${location.offset}:${location.line}:${location.column}"',
-            'is LocationRange -> pp(location.start) + "-" + pp(location.end)',
-          ]),
-          "}",
-        ]),
-        "",
-        'return tToken.toString().drop(1) + " " + pp(location) + " [" + lexeme + "]"',
-      ]),
-      "}",
-    ]),
-    "}",
+    "typealias Token = AbstractToken<TToken>",
   ]);
+
+const tokenName = (definition: Definition, n: number): string => {
+  const numberOfTokens = definition.tokens.length;
+
+  if (n < numberOfTokens) {
+    return `T${definition.tokens[n][0]}`;
+  } else if (n == numberOfTokens) {
+    return "TEOS";
+  } else {
+    return "TERROR";
+  }
+};
 
 function nest(doc: PP.Doc | string): PP.Doc {
   return PP.nest(2, doc);
@@ -372,7 +344,7 @@ function writeInSet(selector: string, s: Set<number>): string {
     ? "false"
     : Set.asRanges(s).map((r) =>
       (r instanceof Array)
-        ? `${r[0]} <= ${selector} && ${selector} <= ${r[1]}`
+        ? `${selector} in ${r[0]}..${r[1]}`
         : `${selector} == ${r}`
     ).join(" || ");
 }
