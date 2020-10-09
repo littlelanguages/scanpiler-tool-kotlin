@@ -9,6 +9,13 @@ Deno.test("scanpiler-tool-kotlin", async () => {
     "simple.Scanner",
     "./test/src/main/kotlin/simple/simple.ll",
   );
+
+  await scanpiler(
+    "./test/src/main/kotlin",
+    "backtracking.Scanner",
+    "./test/src/main/kotlin/backtracking/backtracking.ll",
+  );
+
   await gradle();
 });
 

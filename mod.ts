@@ -165,13 +165,14 @@ function emitStates(
                 nestvcat([
                   dfa.endNodes.has(node.id) &&
                     !dfa.endNodes.has(transition[1].id)
-                    ? `this.markBacktrackPoint(${dfa.endNodes.get(node.id)});`
+                    ? `this.markBacktrackPoint(TToken.${
+                      tokenName(definition, dfa.endNodes.get(node.id)!)
+                    });`
                     : PP.empty,
                   (node.id == 0 && options.markForState0)
-                    ? "this.markAndNextChar();"
-                    : "this.nextChar();",
-                  `${options.stateVariable} = ${transition[1].id};`,
-                  // "break;",
+                    ? "this.markAndNextChar()"
+                    : "this.nextChar()",
+                  `${options.stateVariable} = ${transition[1].id}`,
                 ]),
               ]),
             ),
@@ -227,16 +228,18 @@ function emitTopLevelEndState(
   } else if (finalToken != undefined) {
     return [
       `this.setToken(TToken.${tokenName(definition, finalToken)})`,
-      "return;",
+      "return",
     ];
   } else if (node.id == 0) {
     return [
       "this.markAndNextChar()",
       "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "return",
     ];
   } else {
     return [
       "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "return",
     ];
   }
 }

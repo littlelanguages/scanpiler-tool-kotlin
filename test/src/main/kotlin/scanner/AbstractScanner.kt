@@ -2,7 +2,9 @@ package scanner
 
 import java.io.Reader
 
-abstract class AbstractScanner<T>(private val input: Reader, errorToken: T) {
+abstract class AbstractScanner<T>(inputReader: Reader, errorToken: T) {
+    private var input = ScannerReader(inputReader)
+
     private var offset = -1
     private var line = 1
     private var column = 0
@@ -50,7 +52,8 @@ abstract class AbstractScanner<T>(private val input: Reader, errorToken: T) {
     }
 
     protected fun markBacktrackPoint(ttoken: T) {
-        backtrack = Backtrack(ttoken, offset, line, column, nextCh)
+        input.mark()
+        backtrack = Backtrack(ttoken, offset, line, column, nextCh, StringBuilder(lexeme))
     }
 
     protected fun attemptBacktrackOtherwise(ttoken: T) {
@@ -63,13 +66,17 @@ abstract class AbstractScanner<T>(private val input: Reader, errorToken: T) {
             line = b.line
             column = b.column
             nextCh = b.nextCh
+            input.restoreToMark()
+            lexeme = b.lexeme
 
             setToken(b.token)
         }
     }
 
     protected fun setToken(ttoken: T, lexeme: String? = null) {
+        input.cancelMark()
         backtrack = null
+
         val loc =
                 if (startOffset == offset)
                     LocationCoordinate(startOffset, startLine, startColumn)
@@ -119,4 +126,5 @@ data class Backtrack<T>(
         val offset: Int,
         val line: Int,
         val column: Int,
-        val nextCh: Int)
+        val nextCh: Int,
+        val lexeme: StringBuilder?)
