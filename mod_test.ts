@@ -6,14 +6,26 @@ import { denoCommand } from "./mod.ts";
 Deno.test("scanpiler-tool-kotlin", async () => {
   await scanpiler(
     "./test/src/main/kotlin",
-    "simple.Scanner",
-    "./test/src/main/kotlin/simple/simple.ll",
+    "backtracking.Scanner",
+    "./test/src/main/kotlin/backtracking/backtracking.ll",
   );
 
   await scanpiler(
     "./test/src/main/kotlin",
-    "backtracking.Scanner",
-    "./test/src/main/kotlin/backtracking/backtracking.ll",
+    "comments.Scanner",
+    "./test/src/main/kotlin/comments/comments.ll",
+  );
+
+  await scanpiler(
+    "./test/src/main/kotlin",
+    "scanpiler.Scanner",
+    "./test/src/main/kotlin/scanpiler/scanpiler.ll",
+  );
+
+  await scanpiler(
+    "./test/src/main/kotlin",
+    "simple.Scanner",
+    "./test/src/main/kotlin/simple/simple.ll",
   );
 
   await gradle();

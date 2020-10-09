@@ -97,7 +97,7 @@ const emitScanner = (definition: Definition): PP.Doc =>
         "if (currentToken.tToken != TToken.TEOS) {",
         nestvcat([
           `while (${writeInSet("nextCh", definition.whitespace)}) {`,
-          nest("nextChar();"),
+          nest("nextChar()"),
           "}",
           PP.blank,
           "var state = 0",
@@ -167,7 +167,7 @@ function emitStates(
                     !dfa.endNodes.has(transition[1].id)
                     ? `this.markBacktrackPoint(TToken.${
                       tokenName(definition, dfa.endNodes.get(node.id)!)
-                    });`
+                    })`
                     : PP.empty,
                   (node.id == 0 && options.markForState0)
                     ? "this.markAndNextChar()"
@@ -198,7 +198,7 @@ function emitTopLevelEndState(
       definition.comments[finalToken - definition.tokens.length - 2];
 
     if (comment instanceof LineComment) {
-      return ["this.next();", "return;"];
+      return ["this.next()", "return"];
     } else if (comment instanceof BlockComment) {
       if (comment.nested) {
         return [
@@ -271,7 +271,7 @@ function emitNestedCommentEndState(
       "if (nesting == 0) {",
       nestvcat([
         "this.next()",
-        "return;",
+        "return",
       ]),
       "} else {",
       nestvcat([

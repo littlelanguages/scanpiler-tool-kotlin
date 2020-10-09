@@ -25,7 +25,7 @@ class BacktrackingTests : StringSpec({
                 Token(TToken.TLiteralFloat, range(0, 1, 1, 6, 1, 7), "123.456")
         )
     }
-    
+
     "matching literal int" {
         tokens(Scanner(StringReader("123..4"))) shouldBe listOf(
                 Token(TToken.TLiteralInt, range(0, 1, 1, 2, 1, 3), "123"),
