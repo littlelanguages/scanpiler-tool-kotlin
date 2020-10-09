@@ -7,25 +7,25 @@ Deno.test("scanpiler-tool-kotlin", async () => {
   await scanpiler(
     "./test/src/main/kotlin",
     "backtracking.Scanner",
-    "./test/src/main/kotlin/backtracking/backtracking.ll",
+    "./test/src/main/kotlin/backtracking/backtracking.llld",
   );
 
   await scanpiler(
     "./test/src/main/kotlin",
     "comments.Scanner",
-    "./test/src/main/kotlin/comments/comments.ll",
+    "./test/src/main/kotlin/comments/comments.llld",
   );
 
   await scanpiler(
     "./test/src/main/kotlin",
     "scanpiler.Scanner",
-    "./test/src/main/kotlin/scanpiler/scanpiler.ll",
+    "./test/src/main/kotlin/scanpiler/scanpiler.llld",
   );
 
   await scanpiler(
     "./test/src/main/kotlin",
     "simple.Scanner",
-    "./test/src/main/kotlin/simple/simple.ll",
+    "./test/src/main/kotlin/simple/simple.llld",
   );
 
   await gradle();
