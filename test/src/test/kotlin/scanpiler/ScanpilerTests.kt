@@ -1,27 +1,27 @@
 package scanpiler
 
+import abstractTokens
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import scanner.Location
+import range
 import scanner.LocationCoordinate
-import scanner.LocationRange
 import java.io.StringReader
 
 class ScanpilerTests : StringSpec({
     "empty stream returns an EOS as token" {
-        tokens(Scanner(StringReader(""))) shouldBe listOf(
+        tokens("") shouldBe listOf(
                 Token(TToken.TEOS, LocationCoordinate(0, 1, 1), "")
         )
     }
 
     "empty stream consisting of blanks returns an EOS as token" {
-        tokens(Scanner(StringReader("     "))) shouldBe listOf(
+        tokens("     ") shouldBe listOf(
                 Token(TToken.TEOS, LocationCoordinate(5, 1, 6), "")
         )
     }
 
     "chr comments extend fragments nested to tokens" {
-        tokens(Scanner(StringReader("chr comments extend fragments nested to tokens"))) shouldBe listOf(
+        tokens("chr comments extend fragments nested to tokens") shouldBe listOf(
                 Token(TToken.TChr, range(0, 1, 1, 2, 1, 3), "chr"),
                 Token(TToken.TComments, range(4, 1, 5, 11, 1, 12), "comments"),
                 Token(TToken.TExtend, range(13, 1, 14, 18, 1, 19), "extend"),
@@ -33,7 +33,7 @@ class ScanpilerTests : StringSpec({
     }
 
     "\\ ! | = [ { ( - + ] } ) ;" {
-        tokens(Scanner(StringReader("\\ ! | = [ { ( - + ] } ) ;"))) shouldBe listOf(
+        tokens("\\ ! | = [ { ( - + ] } ) ;") shouldBe listOf(
                 Token(TToken.TBackslash, LocationCoordinate(0, 1, 1), "\\"),
                 Token(TToken.TBang, LocationCoordinate(2, 1, 3), "!"),
                 Token(TToken.TBar, LocationCoordinate(4, 1, 5), "|"),
@@ -51,7 +51,7 @@ class ScanpilerTests : StringSpec({
     }
 
     "Literal values" {
-        tokens(Scanner(StringReader("'x' 0 123 \"\" \"hello world\""))) shouldBe listOf(
+        tokens("'x' 0 123 \"\" \"hello world\"") shouldBe listOf(
                 Token(TToken.TLiteralCharacter, range(0, 1, 1, 2, 1, 3), "'x'"),
                 Token(TToken.TLiteralInt, LocationCoordinate(4, 1, 5), "0"),
                 Token(TToken.TLiteralInt, range(6, 1, 7, 8, 1, 9), "123"),
@@ -61,7 +61,7 @@ class ScanpilerTests : StringSpec({
     }
 
     "Comments" {
-        tokens(Scanner(StringReader("ab // This is a line comments\ncd /* This is a \nmulti-line comment */ ef /* This is a \n/* nested */ multi-line comment */ gh"))) shouldBe listOf(
+        tokens("ab // This is a line comments\ncd /* This is a \nmulti-line comment */ ef /* This is a \n/* nested */ multi-line comment */ gh") shouldBe listOf(
                 Token(TToken.TIdentifier, range(0, 1, 1, 1, 1, 2), "ab"),
                 Token(TToken.TIdentifier, range(30, 2, 1, 31, 2, 2), "cd"),
                 Token(TToken.TIdentifier, range(69, 3, 23, 70, 3, 24), "ef"),
@@ -70,16 +70,4 @@ class ScanpilerTests : StringSpec({
     }
 })
 
-fun tokens(scanner: Scanner): List<Token> {
-    val result = mutableListOf<Token>()
-
-    do {
-        result.add(scanner.current())
-        scanner.next()
-    } while (scanner.current().tToken != TToken.TEOS);
-
-    return result
-}
-
-fun range(o1: Int, l1: Int, c1: Int, o2: Int, l2: Int, c2: Int): Location =
-        LocationRange(LocationCoordinate(o1, l1, c1), LocationCoordinate(o2, l2, c2))
+fun tokens(s: String) = abstractTokens(Scanner(StringReader(s)), TToken.TEOS)
