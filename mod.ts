@@ -160,18 +160,18 @@ function emitStates(
             PP.vcat(
               node.transitions.flatMap((transition, idx) => [
                 `${idx == 0 ? "if " : "} else if "}(${
-                  writeInSet("this.nextCh", transition[0])
+                  writeInSet("nextCh", transition[0])
                 }) {`,
                 nestvcat([
                   dfa.endNodes.has(node.id) &&
                     !dfa.endNodes.has(transition[1].id)
-                    ? `this.markBacktrackPoint(TToken.${
+                    ? `markBacktrackPoint(TToken.${
                       tokenName(definition, dfa.endNodes.get(node.id)!)
                     })`
                     : PP.empty,
                   (node.id == 0 && options.markForState0)
-                    ? "this.markAndNextChar()"
-                    : "this.nextChar()",
+                    ? "markAndNextChar()"
+                    : "nextChar()",
                   `${options.stateVariable} = ${transition[1].id}`,
                 ]),
               ]),
@@ -198,7 +198,7 @@ function emitTopLevelEndState(
       definition.comments[finalToken - definition.tokens.length - 2];
 
     if (comment instanceof LineComment) {
-      return ["this.next()", "return"];
+      return ["next()", "return"];
     } else if (comment instanceof BlockComment) {
       if (comment.nested) {
         return [
@@ -227,18 +227,18 @@ function emitTopLevelEndState(
     }
   } else if (finalToken != undefined) {
     return [
-      `this.setToken(TToken.${tokenName(definition, finalToken)})`,
+      `setToken(TToken.${tokenName(definition, finalToken)})`,
       "return",
     ];
   } else if (node.id == 0) {
     return [
-      "this.markAndNextChar()",
-      "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "markAndNextChar()",
+      "attemptBacktrackOtherwise(TToken.TERROR)",
       "return",
     ];
   } else {
     return [
-      "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "attemptBacktrackOtherwise(TToken.TERROR)",
       "return",
     ];
   }
@@ -253,7 +253,7 @@ function emitNestedCommentEndState(
 
   if (finalToken == undefined) {
     return [
-      "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "attemptBacktrackOtherwise(TToken.TERROR)",
       "return",
     ];
   } else if (finalToken == 0) {
@@ -270,7 +270,7 @@ function emitNestedCommentEndState(
       "nesting -= 1",
       "if (nesting == 0) {",
       nestvcat([
-        "this.next()",
+        "next()",
         "return",
       ]),
       "} else {",
@@ -291,7 +291,7 @@ function emitNonNestedCommentEndState(
 
   if (finalToken == undefined) {
     return [
-      "this.attemptBacktrackOtherwise(TToken.TERROR)",
+      "attemptBacktrackOtherwise(TToken.TERROR)",
       "return",
     ];
   } else if (finalToken == 0) {
@@ -300,7 +300,7 @@ function emitNonNestedCommentEndState(
     ];
   } else {
     return [
-      "this.next()",
+      "next()",
       "return",
     ];
   }

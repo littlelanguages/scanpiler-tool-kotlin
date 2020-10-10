@@ -1,4 +1,4 @@
-package scanner
+package io.littlelanguages.scanpiler
 
 class ScannerReader(private val reader: java.io.Reader) {
     private var restoreBuffer: List<Int>? = null

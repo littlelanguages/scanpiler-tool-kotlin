@@ -4,7 +4,7 @@ import abstractTokens
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import range
-import scanner.LocationCoordinate
+import io.littlelanguages.scanpiler.LocationCoordinate
 import java.io.StringReader
 
 class BacktrackingTests : StringSpec({

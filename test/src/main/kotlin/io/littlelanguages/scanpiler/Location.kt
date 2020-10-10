@@ -1,4 +1,6 @@
-package scanner
+package io.littlelanguages.scanpiler
+
+import io.littlelanguages.data.Yamlable
 
 interface Locationable {
     fun position(): Location

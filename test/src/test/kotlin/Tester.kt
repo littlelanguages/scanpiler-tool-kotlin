@@ -1,3 +1,5 @@
+import io.littlelanguages.data.scanner.*
+import io.littlelanguages.scanpiler.*
 import scanner.*
 
 fun <T> abstractTokens(scanner: AbstractScanner<T>, eos: T): List<AbstractToken<T>> {

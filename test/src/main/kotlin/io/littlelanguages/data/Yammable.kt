@@ -1,4 +1,4 @@
-package scanner
+package io.littlelanguages.data
 
 interface Yamlable {
     fun singletonMap(key: String, value: Any): Map<String, Any> =
