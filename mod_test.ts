@@ -1,7 +1,7 @@
 import * as Assert from "https://deno.land/std@0.71.0/testing/asserts.ts";
 import { exec, OutputMode } from "https://deno.land/x/exec@0.0.5/mod.ts";
 
-import { denoCommand } from "./mod.ts";
+import { command } from "./mod.ts";
 
 Deno.test("scanpiler-tool-kotlin", async () => {
   await scanpiler(
@@ -32,7 +32,7 @@ Deno.test("scanpiler-tool-kotlin", async () => {
 });
 
 async function scanpiler(directory: string, name: string, fileName: string) {
-  await denoCommand(
+  await command(
     fileName,
     { directory, name, force: true, verbose: true },
   );

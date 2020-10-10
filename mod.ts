@@ -22,24 +22,25 @@ export type CommandOptions = {
   verbose: boolean;
 };
 
-export function denoCommand(
+export const command = async (
   fileName: string,
   options: CommandOptions,
-): Promise<void> {
+): Promise<void> => {
   const [packageName, name] = splitName(options.name);
   const directory = `${options.directory}/${packageName.replaceAll(".", "/")}`;
   const scannerOutfileFileName = `${directory}/${name}.kt`;
 
-  return translateScanner(
+  await translateScanner(
     fileName,
     directory,
     scannerOutfileFileName,
     packageName,
     options,
-  ).then((_) => copyLibrary(options));
-}
+  );
+  return await copyLibrary(options);
+};
 
-const translateScanner = (
+export const translateScanner = (
   fileName: string,
   directory: string,
   scannerOutfileFileName: string,
@@ -73,7 +74,7 @@ const translateScanner = (
   }
 };
 
-const copyLibrary = async (
+export const copyLibrary = async (
   options: CommandOptions,
 ): Promise<void> => {
   const copyFile = async (
@@ -121,7 +122,7 @@ const copyLibrary = async (
     "lib/kotlin/ScannerReader.kt",
     "io/littlelanguages/scanpiler/ScannerReader.kt",
   );
-  await copyFile(
+  return await copyFile(
     "lib/kotlin/Yammable.kt",
     "io/littlelanguages/data/Yammable.kt",
   );
