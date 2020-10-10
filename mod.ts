@@ -1,3 +1,4 @@
+import * as Path from "https://deno.land/std@0.63.0/path/mod.ts";
 import {
   asDoc,
   BlockComment,
@@ -14,9 +15,6 @@ import {
 import * as PP from "https://raw.githubusercontent.com/littlelanguages/deno-lib-text-prettyprint/0.3.1/mod.ts";
 import * as Set from "https://raw.githubusercontent.com/littlelanguages/deno-lib-data-set/0.1.0/mod.ts";
 
-/*
-  scanpiler --directory=. --name=za.co.no.fred.Scanner hello.llld
-*/
 export type CommandOptions = {
   directory: string | undefined;
   name: string;
@@ -32,6 +30,22 @@ export function denoCommand(
   const directory = `${options.directory}/${packageName.replaceAll(".", "/")}`;
   const scannerOutfileFileName = `${directory}/${name}.kt`;
 
+  return translateScanner(
+    fileName,
+    directory,
+    scannerOutfileFileName,
+    packageName,
+    options,
+  ).then((_) => copyLibrary(options));
+}
+
+const translateScanner = (
+  fileName: string,
+  directory: string,
+  scannerOutfileFileName: string,
+  packageName: string,
+  options: CommandOptions,
+): Promise<void> => {
   if (
     options.force ||
     fileDateTime(fileName) > fileDateTime(scannerOutfileFileName)
@@ -57,13 +71,67 @@ export function denoCommand(
   } else {
     return Promise.resolve();
   }
-}
+};
 
-export function writeScanner(
+const copyLibrary = async (
+  options: CommandOptions,
+): Promise<void> => {
+  const copyFile = async (
+    srcName: string,
+    targetName: string,
+  ): Promise<void> => {
+    const outputFileName = `${options.directory}/${targetName}`;
+
+    if (options.force || fileDateTime(outputFileName) === 0) {
+      const srcFileName = `${Path.dirname(import.meta.url)}/${srcName}`;
+
+      console.log(`Copy ${srcName}`);
+
+      return Deno.mkdir(Path.dirname(outputFileName), { recursive: true })
+        .then((_) =>
+          (srcFileName.startsWith("file://"))
+            ? Deno.copyFile(
+              srcFileName.substr(7),
+              outputFileName,
+            )
+            : srcFileName.startsWith("http://") ||
+                srcFileName.startsWith("https://")
+            ? fetch(srcFileName).then((response) => response.text()).then((
+              t: string,
+            ) => Deno.writeFile(outputFileName, new TextEncoder().encode(t)))
+            : Deno.copyFile(
+              srcFileName,
+              outputFileName,
+            )
+        );
+    } else {
+      return Promise.resolve();
+    }
+  };
+
+  await copyFile(
+    "lib/kotlin/AbstractScanner.kt",
+    "io/littlelanguages/scanpiler/AbstractScanner.kt",
+  );
+  await copyFile(
+    "lib/kotlin/Location.kt",
+    "io/littlelanguages/scanpiler/Location.kt",
+  );
+  await copyFile(
+    "lib/kotlin/ScannerReader.kt",
+    "io/littlelanguages/scanpiler/ScannerReader.kt",
+  );
+  await copyFile(
+    "lib/kotlin/Yammable.kt",
+    "io/littlelanguages/data/Yammable.kt",
+  );
+};
+
+export const writeScanner = (
   fileName: string,
   packageName: string,
   definition: Definition,
-): Promise<void> {
+): Promise<void> => {
   const scannerDoc = PP.vcat([
     PP.hcat(["package ", packageName]),
     PP.blank,
@@ -83,7 +151,7 @@ export function writeScanner(
     .create(fileName)
     .then((w) => PP.render(scannerDoc, w).then((_) => w.close()))
     .then((_) => {});
-}
+};
 
 const emitScanner = (definition: Definition): PP.Doc =>
   PP.vcat([
@@ -129,11 +197,11 @@ type EmitOnEndState = {
   stateVariable: string;
 };
 
-function emitStateTransitionLoop(
+const emitStateTransitionLoop = (
   definition: Definition,
   options: EmitOnEndState,
-): PP.Doc {
-  return PP.vcat([
+): PP.Doc =>
+  PP.vcat([
     "while (true) {",
     nestvcat([
       `when (${options.stateVariable}) {`,
@@ -142,24 +210,23 @@ function emitStateTransitionLoop(
     ]),
     "}",
   ]);
-}
 
-function emitStates(
+const emitStates = (
   definition: Definition,
   options: EmitOnEndState,
-): Array<PP.Doc> {
+): Array<PP.Doc> => {
   const dfa = options.dfa;
 
   return dfa.nodes.flatMap((node) =>
     PP.vcat([
       `${node.id} -> {`,
       nestvcat(
-        node.transitions.length == 0
+        node.transitions.length === 0
           ? options.emitEnd(definition, dfa, node)
           : [
             PP.vcat(
               node.transitions.flatMap((transition, idx) => [
-                `${idx == 0 ? "if " : "} else if "}(${
+                `${idx === 0 ? "if " : "} else if "}(${
                   writeInSet("nextCh", transition[0])
                 }) {`,
                 nestvcat([
@@ -169,7 +236,7 @@ function emitStates(
                       tokenName(definition, dfa.endNodes.get(node.id)!)
                     })`
                     : PP.empty,
-                  (node.id == 0 && options.markForState0)
+                  (node.id === 0 && options.markForState0)
                     ? "markAndNextChar()"
                     : "nextChar()",
                   `${options.stateVariable} = ${transition[1].id}`,
@@ -184,16 +251,16 @@ function emitStates(
       "}",
     ])
   );
-}
+};
 
-function emitTopLevelEndState(
+const emitTopLevelEndState = (
   definition: Definition,
   dfa: FA<number>,
   node: Node,
-): Array<PP.Doc | string> {
+): Array<PP.Doc | string> => {
   const finalToken: number | undefined = dfa.endNodes.get(node.id);
 
-  if (finalToken != undefined && finalToken > definition.tokens.length) {
+  if (finalToken !== undefined && finalToken > definition.tokens.length) {
     const comment =
       definition.comments[finalToken - definition.tokens.length - 2];
 
@@ -225,12 +292,12 @@ function emitTopLevelEndState(
     } else {
       return [];
     }
-  } else if (finalToken != undefined) {
+  } else if (finalToken !== undefined) {
     return [
       `setToken(TToken.${tokenName(definition, finalToken)})`,
       "return",
     ];
-  } else if (node.id == 0) {
+  } else if (node.id === 0) {
     return [
       "markAndNextChar()",
       "attemptBacktrackOtherwise(TToken.TERROR)",
@@ -242,25 +309,25 @@ function emitTopLevelEndState(
       "return",
     ];
   }
-}
+};
 
-function emitNestedCommentEndState(
+const emitNestedCommentEndState = (
   _: Definition,
   dfa: FA<number>,
   node: Node,
-): Array<PP.Doc | string> {
+): Array<PP.Doc | string> => {
   const finalToken: number | undefined = dfa.endNodes.get(node.id);
 
-  if (finalToken == undefined) {
+  if (finalToken === undefined) {
     return [
       "attemptBacktrackOtherwise(TToken.TERROR)",
       "return",
     ];
-  } else if (finalToken == 0) {
+  } else if (finalToken === 0) {
     return [
       "nstate = 0",
     ];
-  } else if (finalToken == 1) {
+  } else if (finalToken === 1) {
     return [
       "nesting += 1",
       "nstate = 0",
@@ -280,21 +347,21 @@ function emitNestedCommentEndState(
       "}",
     ];
   }
-}
+};
 
-function emitNonNestedCommentEndState(
+const emitNonNestedCommentEndState = (
   _: Definition,
   dfa: FA<number>,
   node: Node,
-): Array<PP.Doc | string> {
+): Array<PP.Doc | string> => {
   const finalToken: number | undefined = dfa.endNodes.get(node.id);
 
-  if (finalToken == undefined) {
+  if (finalToken === undefined) {
     return [
       "attemptBacktrackOtherwise(TToken.TERROR)",
       "return",
     ];
-  } else if (finalToken == 0) {
+  } else if (finalToken === 0) {
     return [
       "nstate = 0",
     ];
@@ -304,7 +371,7 @@ function emitNonNestedCommentEndState(
       "return",
     ];
   }
-}
+};
 
 const emitTToken = (definition: Definition): PP.Doc =>
   PP.vcat([
@@ -327,30 +394,26 @@ const tokenName = (definition: Definition, n: number): string => {
 
   if (n < numberOfTokens) {
     return `T${definition.tokens[n][0]}`;
-  } else if (n == numberOfTokens) {
+  } else if (n === numberOfTokens) {
     return "TEOS";
   } else {
     return "TERROR";
   }
 };
 
-function nest(doc: PP.Doc | string): PP.Doc {
-  return PP.nest(2, doc);
-}
+const nest = (doc: PP.Doc | string): PP.Doc => PP.nest(2, doc);
 
-function nestvcat(docs: Array<PP.Doc | string>): PP.Doc {
-  return PP.nest(2, PP.vcat(docs));
-}
+const nestvcat = (docs: Array<PP.Doc | string>): PP.Doc =>
+  PP.nest(2, PP.vcat(docs));
 
-function writeInSet(selector: string, s: Set<number>): string {
-  return (Set.isEmpty(s))
+const writeInSet = (selector: string, s: Set<number>): string =>
+  (Set.isEmpty(s))
     ? "false"
     : Set.asRanges(s).map((r) =>
       (r instanceof Array)
         ? `${selector} in ${r[0]}..${r[1]}`
         : `${selector} == ${r}`
     ).join(" || ");
-}
 
 const splitName = (name: string): [string, string] => {
   const lastIndexOfPeriod = name.lastIndexOf(".");
