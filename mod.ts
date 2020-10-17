@@ -28,12 +28,12 @@ export const command = async (
 ): Promise<void> => {
   const [packageName, name] = splitName(options.name);
   const directory = `${options.directory}/${packageName.replaceAll(".", "/")}`;
-  const scannerOutfileFileName = `${directory}/${name}.kt`;
+  const scannerOutputFileName = `${directory}/${name}.kt`;
 
   await translateScanner(
     fileName,
     directory,
-    scannerOutfileFileName,
+    scannerOutputFileName,
     packageName,
     options,
   );
