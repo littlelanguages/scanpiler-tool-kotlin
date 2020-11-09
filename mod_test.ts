@@ -1,4 +1,4 @@
-import * as Assert from "https://deno.land/std@0.71.0/testing/asserts.ts";
+import * as Assert from "https://deno.land/std@0.76.0/testing/asserts.ts";
 import { exec, OutputMode } from "https://deno.land/x/exec@0.0.5/mod.ts";
 
 import { command } from "./mod.ts";

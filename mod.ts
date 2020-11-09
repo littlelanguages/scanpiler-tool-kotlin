@@ -1,4 +1,4 @@
-import * as Path from "https://deno.land/std@0.63.0/path/mod.ts";
+import * as Path from "https://deno.land/std@0.76.0/path/mod.ts";
 import {
   asDoc,
   BlockComment,
@@ -10,10 +10,10 @@ import {
   LineComment,
   Node,
   translate,
-} from "https://raw.githubusercontent.com/littlelanguages/scanpiler/0.2.2/mod.ts";
+} from "https://raw.githubusercontent.com/littlelanguages/scanpiler/0.3.0/mod.ts";
 
-import * as PP from "https://raw.githubusercontent.com/littlelanguages/deno-lib-text-prettyprint/0.3.1/mod.ts";
-import * as Set from "https://raw.githubusercontent.com/littlelanguages/deno-lib-data-set/0.1.0/mod.ts";
+import * as PP from "https://raw.githubusercontent.com/littlelanguages/deno-lib-text-prettyprint/0.3.2/mod.ts";
+import * as Set from "https://raw.githubusercontent.com/littlelanguages/deno-lib-data-set/0.1.1/mod.ts";
 
 export type CommandOptions = {
   directory: string | undefined;
